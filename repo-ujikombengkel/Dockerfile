@@ -22,3 +22,12 @@ RUN chown -R www-data:www-data /var/www \
 EXPOSE 9000
 
 CMD ["php-fpm"]
+
+
+# RUN apt-get clean && rm -rf /var/lib/apt/lists/* \
+#     && apt-get update --fix-missing \
+#     && apt-get install -y \
+#         git curl libpng-dev libonig-dev \
+#         libxml2-dev libzip-dev zip unzip nodejs npm \
+#     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+#     && apt-get clean && rm -rf /var/lib/apt/lists/*
