@@ -1,0 +1,55 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www
+    expose:
+      - '9000'          
+    volumes:
+      - ./:/var/www
+      - ./storage:/var/www/storage
+    networks:
+      - network-ujikom
+    depends_on:
+      - db
+    scale: 3
+
+  loadbalancer:
+    image: nginx:alpine
+    container_name: ujikom_loadbalancer
+    restart: unless-stopped
+    ports:
+      - '8080:80'       # atau bisa 80:80
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - network-ujikom
+    depends_on:
+      - web
+
+  db:
+    image: mysql:8.0
+    container_name: ujikom_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: otoklik
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_PASSWORD: secret
+      MYSQL_USER: otoklik
+    volumes:
+      - volume-ujikom:/var/lib/mysql   
+    ports:
+      - '3306:3306'
+    networks:
+      - network-ujikom
+
+networks:
+  network-ujikom:
+    driver: bridge
+
+volumes:
+  volume-ujikom:
+    driver: local

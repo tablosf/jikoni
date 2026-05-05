@@ -1,0 +1,105 @@
+- name: Setup VM2 - Install Docker dan Jalankan Web Server
+  hosts: vm2
+  become: yes
+  tasks:
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Install dependencies Docker
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Buat direktori keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download GPG key Docker
+      shell: >-
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Set permission GPG key
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        mode: 'a+r'
+
+    - name: Tambah repository Docker
+      shell: >-
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Update apt setelah tambah repo Docker
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Verifikasi Docker terinstall
+      command: docker --version
+      register: docker_version
+
+    - name: Tampilkan versi Docker
+      debug:
+        msg: "Docker terinstall: {{ docker_version.stdout }}"
+
+    - name: Pastikan service Docker berjalan
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Buat direktori html
+      file:
+        path: /home/ujikom/html
+        state: directory
+
+    - name: Buat file index.html Hallo Docker
+      copy:
+        dest: /home/ujikom/html/index.html
+        content: |
+          <html>
+            <head><title>Hallo Docker</title></head>
+            <body>
+              <h1>Hallo Docker!</h1>
+              <p>Web server berjalan di VM 2 via Ansible</p>
+            </body>
+          </html>
+
+    - name: Jalankan container web server Nginx
+      docker_container:
+        name: webserver
+        image: nginx:alpine
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - '80:80'
+        volumes:
+          - /home/ujikom/html:/usr/share/nginx/html
+
+    - name: Verifikasi container webserver berjalan
+      command: docker ps
+      register: docker_ps
+
+    - name: Tampilkan status container
+      debug:
+        msg: "{{ docker_ps.stdout }}"
