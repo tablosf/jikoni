@@ -1,6 +1,7 @@
 - name: Setup VM2 - Install Docker dan Jalankan Web Server
   hosts: vm2
   become: yes
+
   tasks:
 
     - name: Update apt cache
@@ -29,18 +30,13 @@
       args:
         creates: /etc/apt/keyrings/docker.gpg
 
-    - name: Set permission GPG key
-      file:
-        path: /etc/apt/keyrings/docker.gpg
-        mode: 'a+r'
-
     - name: Tambah repository Docker
       shell: >-
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
       args:
         creates: /etc/apt/sources.list.d/docker.list
 
-    - name: Update apt setelah tambah repo Docker
+    - name: Update apt setelah tambah repo
       apt:
         update_cache: yes
 
@@ -54,14 +50,6 @@
           - docker-compose-plugin
         state: present
 
-    - name: Verifikasi Docker terinstall
-      command: docker --version
-      register: docker_version
-
-    - name: Tampilkan versi Docker
-      debug:
-        msg: "Docker terinstall: {{ docker_version.stdout }}"
-
     - name: Pastikan service Docker berjalan
       service:
         name: docker
@@ -73,7 +61,7 @@
         path: /home/ujikom/html
         state: directory
 
-    - name: Buat file index.html Hallo Docker
+    - name: Buat file index.html
       copy:
         dest: /home/ujikom/html/index.html
         content: |
@@ -85,21 +73,13 @@
             </body>
           </html>
 
-    - name: Jalankan container web server Nginx
-      docker_container:
-        name: webserver
-        image: nginx:alpine
-        state: started
-        restart_policy: unless-stopped
-        ports:
-          - '80:80'
-        volumes:
-          - /home/ujikom/html:/usr/share/nginx/html
-
-    - name: Verifikasi container webserver berjalan
-      command: docker ps
-      register: docker_ps
-
-    - name: Tampilkan status container
-      debug:
-        msg: "{{ docker_ps.stdout }}"
+    - name: Jalankan container Nginx
+      shell: >-
+        docker run -d
+        --name webserver
+        --restart unless-stopped
+        -p 80:80
+        -v /home/ujikom/html:/usr/share/nginx/html
+        nginx:alpine
+      args:
+        creates: /home/ujikom/html/index.html
